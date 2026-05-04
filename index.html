@@ -601,11 +601,9 @@ function renderPhotoStudioPage(studentData) {
         <div style="max-width:500px; margin:5vh auto; position:relative; z-index:10; padding:20px;">
             <div class="glass-card" style="padding:1.5rem;">
                 <h2 style="text-align:center; color:#38bdf8;">📷 Form Pas Foto</h2>
-                <div style="margin: 1rem 0;">
-                    <label>Nama</label>
-                    <input type="text" id="studioNama" class="input-field" readonly style="background:#1e293b;">
-                    <label>NISN</label>
-                    <input type="text" id="studioNisn" class="input-field" readonly style="background:#1e293b;">
+                <div class="data-center" style="margin: 1rem 0; text-align: center;">
+                    <div class="data-nama" style="font-size: 1.6rem; font-weight: 700; color: white; margin-bottom: 6px;" id="displayNama"></div>
+                    <div class="data-nisn" style="font-size: 1rem; color: #cbd5e1; letter-spacing: 1px;" id="displayNisn"></div>
                 </div>
                 <div style="display:flex; gap:12px; margin:20px 0;">
                     <button id="cameraBtn" class="btn-primary" style="flex:1;">📸 Buka Kamera</button>
@@ -616,33 +614,114 @@ function renderPhotoStudioPage(studentData) {
                     <img id="imagePreview" style="max-width:100%; max-height:200px; border-radius:16px; display:none;">
                 </div>
                 <input type="file" id="fileInput" accept="image/*" style="display:none;">
-                <button id="kirimBtn" class="btn-primary" style="background:#0e7c6b;">Kirim</button>
+                <button id="kirimBtn" class="btn-close-full" style="background:#0e7c6b; margin-top: 1.5rem;">Kirim</button>
             </div>
         </div>
     `;
     
-    document.getElementById('studioNama').value = studentData.nama;
-    document.getElementById('studioNisn').value = studentData.nisn;
+    document.getElementById('displayNama').innerText = studentData.nama;
+    document.getElementById('displayNisn').innerText = studentData.nisn;
     
     let currentImageBlob = null;
     const previewImg = document.getElementById('imagePreview');
     const previewText = document.querySelector('#previewArea p');
     
-    document.getElementById('cameraBtn').addEventListener('click', () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.capture = 'environment';
-        input.onchange = (e) => {
-            if (e.target.files[0]) {
-                currentImageBlob = e.target.files[0];
-                const url = URL.createObjectURL(currentImageBlob);
-                previewImg.src = url;
-                previewImg.style.display = 'block';
-                if(previewText) previewText.style.display = 'none';
+    document.getElementById('cameraBtn').addEventListener('click', async () => {
+        try {
+            // Cek apakah device support kamera
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                // Fallback ke input file jika tidak support
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.capture = 'environment';
+                input.onchange = (e) => {
+                    if (e.target.files[0]) {
+                        currentImageBlob = e.target.files[0];
+                        const url = URL.createObjectURL(currentImageBlob);
+                        previewImg.src = url;
+                        previewImg.style.display = 'block';
+                        if(previewText) previewText.style.display = 'none';
+                    }
+                };
+                input.click();
+                return;
             }
-        };
-        input.click();
+            
+            // Buka kamera langsung dengan video stream
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            
+            // Buat elemen video untuk preview sementara
+            const video = document.createElement('video');
+            video.srcObject = stream;
+            video.autoplay = true;
+            video.style.width = '100%';
+            video.style.maxHeight = '300px';
+            video.style.borderRadius = '16px';
+            
+            // Buat modal untuk mengambil foto
+            const modalCamera = document.createElement('div');
+            modalCamera.className = 'modal-overlay';
+            modalCamera.style.zIndex = '30000';
+            modalCamera.innerHTML = `
+                <div class="success-card" style="max-width: 400px; padding: 1rem;">
+                    <video id="cameraVideo" autoplay playsinline style="width:100%; border-radius:16px; margin-bottom:1rem;"></video>
+                    <div style="display:flex; gap:12px;">
+                        <button id="captureBtn" class="btn-primary" style="flex:1;">📸 Ambil Foto</button>
+                        <button id="closeCameraBtn" class="btn-close-full" style="margin-top:0;">Tutup</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modalCamera);
+            
+            const videoElem = modalCamera.querySelector('#cameraVideo');
+            videoElem.srcObject = stream;
+            
+            modalCamera.querySelector('#captureBtn').addEventListener('click', () => {
+                // Buat canvas untuk mengambil gambar dari video
+                const canvas = document.createElement('canvas');
+                canvas.width = videoElem.videoWidth;
+                canvas.height = videoElem.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+                
+                // Konversi ke blob
+                canvas.toBlob((blob) => {
+                    currentImageBlob = blob;
+                    const url = URL.createObjectURL(blob);
+                    previewImg.src = url;
+                    previewImg.style.display = 'block';
+                    if(previewText) previewText.style.display = 'none';
+                    
+                    // Stop stream dan tutup modal
+                    stream.getTracks().forEach(track => track.stop());
+                    modalCamera.remove();
+                }, 'image/jpeg', 0.9);
+            });
+            
+            modalCamera.querySelector('#closeCameraBtn').addEventListener('click', () => {
+                stream.getTracks().forEach(track => track.stop());
+                modalCamera.remove();
+            });
+            
+        } catch (err) {
+            console.error('Gagal akses kamera:', err);
+            alert('Tidak dapat mengakses kamera. Pastikan izin kamera diberikan.\n\nFallback: Menggunakan upload file.');
+            // Fallback ke input file
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (e) => {
+                if (e.target.files[0]) {
+                    currentImageBlob = e.target.files[0];
+                    const url = URL.createObjectURL(currentImageBlob);
+                    previewImg.src = url;
+                    previewImg.style.display = 'block';
+                    if(previewText) previewText.style.display = 'none';
+                }
+            };
+            input.click();
+        }
     });
     
     document.getElementById('uploadBtn').addEventListener('click', () => {
