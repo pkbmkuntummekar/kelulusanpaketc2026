@@ -760,41 +760,84 @@ function renderPhotoStudioPage(studentData) {
         }
     });
     
-    document.getElementById('kirimBtn').addEventListener('click', () => {
+    document.getElementById('kirimBtn').addEventListener('click', async () => {
         if (!currentImageBlob) {
             alert("Silakan ambil atau unggah foto terlebih dahulu.");
             return;
         }
         
-        const modal = document.createElement('div');
-        modal.className = 'modal-confirm';
-        modal.innerHTML = `
-            <div class="confirm-inner">
-                <p style="margin-bottom:1rem;">Jika foto Anda sudah format pasfoto 3x4 warna merah dengan kualitas HD maka Anda hanya akan dikenakan biaya cetak 20.000. Jika foto Anda masih dalam bentuk selfie tanpa format yang disebutkan, maka Anda akan dikenakan biaya 35.000 untuk biaya cetak dan biaya pengeditan/perbaikan</p>
-                <strong>Apakah Anda setuju ?</strong>
-                <div class="confirm-btns" style="margin-top:24px;">
-                    <button id="biayaTutup" class="btn-no">Tutup</button>
-                    <button id="biayaLanjut" class="btn-yes">Lanjutkan</button>
-                </div>
-            </div>
+        // Tampilkan loading upload
+        const loadingUpload = document.createElement('div');
+        loadingUpload.className = 'loading-overlay';
+        loadingUpload.innerHTML = `
+            <div class="loading-spinner-large"></div>
+            <div class="loading-text">Mengupload foto ke server...</div>
         `;
-        document.body.appendChild(modal);
+        document.body.appendChild(loadingUpload);
         
-        modal.querySelector('#biayaTutup').addEventListener('click', () => {
-            modal.remove();
-            window.location.href = window.location.pathname;
-        });
-        
-        modal.querySelector('#biayaLanjut').addEventListener('click', () => {
-            modal.remove();
+        try {
+            // Konversi blob ke base64
+            const reader = new FileReader();
+            const base64Promise = new Promise((resolve) => {
+                reader.onloadend = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.readAsDataURL(currentImageBlob);
+            });
+            
+            const base64Data = await base64Promise;
             const nama = document.getElementById('displayNama').innerText;
-            const waNumber = "6289609745090";
-            const textWA = `Assalamualaikum. saya ${nama} , peserta didik PKBM Kuntum Mekar mau melakukan pembayaran pas foto`;
-            window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(textWA)}`, '_blank');
-            setTimeout(() => {
-                window.location.href = window.location.pathname;
-            }, 2000);
-        });
+            const nisn = document.getElementById('displayNisn').innerText;
+            const fileName = `${nisn}_${nama.replace(/\s/g, '_')}_${Date.now()}.jpg`;
+            
+            // Kirim ke Apps Script
+            const formData = new FormData();
+            formData.append('file', base64Data);
+            formData.append('fileName', fileName);
+            formData.append('nisn', nisn);
+            formData.append('nama', nama);
+            
+            const uploadResponse = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                body: formData
+            });
+            
+            const uploadResult = await uploadResponse.json();
+            loadingUpload.remove();
+            
+            if (uploadResult.success) {
+                // Tampilkan modal sukses upload
+                const successModal = document.createElement('div');
+                successModal.className = 'modal-confirm';
+                successModal.innerHTML = `
+                    <div class="confirm-inner">
+                        <h3 style="color:#2dd4bf; margin-bottom:16px;">✅ Upload Berhasil!</h3>
+                        <p style="margin-bottom:12px;">Foto Anda telah tersimpan di Google Drive.</p>
+                        <button id="okContinueBtn" class="btn-yes" style="width:100%; margin-top:10px;">Lanjutkan ke WhatsApp</button>
+                    </div>
+                `;
+                document.body.appendChild(successModal);
+                
+                successModal.querySelector('#okContinueBtn').addEventListener('click', () => {
+                    successModal.remove();
+                    
+                    // Lanjut ke WhatsApp seperti biasa
+                    const textWA = `Assalamualaikum. saya ${nama} (NISN: ${nisn}), peserta didik PKBM Kuntum Mekar mau melakukan pembayaran pas foto. Foto sudah diupload.`;
+                    const waNumber = "6289609745090";
+                    window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(textWA)}`, '_blank');
+                    setTimeout(() => {
+                        window.location.href = window.location.pathname;
+                    }, 2000);
+                });
+            } else {
+                throw new Error(uploadResult.error || 'Upload gagal');
+            }
+            
+        } catch (error) {
+            loadingUpload.remove();
+            alert('Gagal mengupload foto: ' + error.message + '\n\nSilakan coba lagi.');
+        }
     });
 }
 
