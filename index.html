@@ -396,7 +396,7 @@ body {
 <div class="bg-circle circle3"></div>
 
 <div id="welcomeScreen">
-    <h1 class="welcome-text">PKBM KUNTUM MEKAR</h1>
+    <h1 class="welcome-text">WELCOME</h1>
 </div>
 
 <div id="mainContent" class="hidden">
@@ -421,6 +421,26 @@ body {
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzTj_S0eOx1xgQErWxNgeM1YEaBNjqM6RZwtE9ruiYE5wB-2Cdk5cYJkf74ki00Xhfqdw/exec';
 
 let currentStudentData = null;
+
+// ================= TEXT TO SPEECH =================
+function speakText(text) {
+    if (!('speechSynthesis' in window)) return;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'id-ID'; // Bahasa Indonesia
+    utterance.rate = 0.9; // kecepatan bicara
+    utterance.pitch = 1;
+
+    // Ambil voice terbaik (jika tersedia)
+    const voices = speechSynthesis.getVoices();
+    const indoVoice = voices.find(v => v.lang === 'id-ID');
+    if (indoVoice) {
+        utterance.voice = indoVoice;
+    }
+
+    speechSynthesis.cancel(); // hentikan suara sebelumnya
+    speechSynthesis.speak(utterance);
+}
 
 async function searchStudentByNISN(nisn) {
     try {
@@ -469,6 +489,7 @@ const tempatTanggal = `${student.tempatLahir || '-'}, ${tanggalFormatted}`;
     const isLulus = (student.status || "").toLowerCase() === "lulus";
     
     if (!isLulus) {
+        speakText(`Mohon maaf ${student.nama}, Anda belum dinyatakan lulus`);
         const modalDiv = document.createElement('div');
         modalDiv.className = 'modal-overlay';
         modalDiv.innerHTML = `
@@ -494,6 +515,7 @@ const tempatTanggal = `${student.tempatLahir || '-'}, ${tanggalFormatted}`;
     }
     
     // LULUS - sesuai permintaan: tanpa label, font nama lebih besar, data center, tombol tutup full width, pas foto sebagai footer kecil
+    speakText(`Selamat kepada ${student.nama}, Anda dinyatakan lulus`);
     const modalDiv = document.createElement('div');
     modalDiv.className = 'modal-overlay';
     modalDiv.innerHTML = `
@@ -803,6 +825,11 @@ function handlePhotoPageRouting() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    setTimeout(() => {
+        speakText("Selamat datang peserta didik PKBM Kuntum Mekar");
+    }, 800);
+
     if (handlePhotoPageRouting()) return;
     
     const welcome = document.getElementById('welcomeScreen');
