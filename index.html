@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 <title>PKBM Kuntum Mekar - Pengumuman Kelulusan</title>
+<link href="https://fonts.googleapis.com/css2?family=Goldman:wght@400;700&display=swap" rel="stylesheet">
 
 <style>
 /* ================= RESET & GLOBAL ================= */
@@ -68,17 +69,52 @@ body {
     z-index: 10000;
     backdrop-filter: blur(4px);
 }
+.welcome-wrapper {
+    padding: 0 24px;          /* jarak kiri kanan dari layar */
+    text-align: center;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
+/* update welcome-text */
 .welcome-text {
-    font-size: 64px;
-    font-weight: 800;
-    letter-spacing: 8px;
-    background: linear-gradient(135deg, #7dd3fc, #38bdf8);
+    font-family: 'Goldman', system-ui, sans-serif;
+
+    font-size: 48px;
+    font-weight: 700;
+    text-transform: uppercase;
+
+    letter-spacing: 1px;     /* sangat rapat */
+    line-height: 1;          /* ultra compact */
+
+    text-align: center;
+    max-width: 100%;
+    padding: 0 16px;
+
+    background: linear-gradient(180deg, #e0f2fe, #38bdf8);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
+
     opacity: 0;
-    transform: scale(0.85);
-    animation: fadeInScale 1.4s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards, glowPulse 1.8s infinite alternate;
+    transform: scale(0.85) translateY(10px);
+
+    animation:
+        fadeInScale 1.4s cubic-bezier(0.2, 0.9, 0.4, 1.1) forwards,
+        glowCinematic 2.2s ease-in-out infinite alternate;
+}
+
+/* cinematic glow lebih halus */
+@keyframes glowCinematic {
+    from {
+        text-shadow: 0 0 8px rgba(56,189,248,0.25);
+        filter: brightness(1);
+    }
+    to {
+        text-shadow: 0 0 22px rgba(56,189,248,0.55), 0 0 40px rgba(14,165,233,0.35);
+        filter: brightness(1.15);
+    }
 }
 @keyframes fadeInScale {
     to {
@@ -396,7 +432,9 @@ body {
 <div class="bg-circle circle3"></div>
 
 <div id="welcomeScreen">
-    <h1 class="welcome-text">PKBM KUNTUM MEKAR</h1>
+    <div class="welcome-wrapper">
+        <h1 class="welcome-text">PKBM KUNTUM MEKAR</h1>
+    </div>
 </div>
 
 <div id="mainContent" class="hidden">
